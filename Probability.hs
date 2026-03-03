@@ -38,3 +38,12 @@ normalize (Probability xs) =
   in Probability sumGroup
   where
     sumGroups group = (fst (head group),sum (map snd group))
+
+rollDice :: Int -> Probability Int
+rollDice n = foldl step (pure 0) [1..n]
+  where
+  step acc _ =
+    normalize $ do
+    a <- acc
+    r <- roll
+    pure (a + r)
