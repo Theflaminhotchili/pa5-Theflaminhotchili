@@ -1,10 +1,21 @@
 import Data.List (sortBy, groupBy)
 import Data.Ord  (comparing)
 import Data.Function (on)
+import Data.Array (Array, array, (!))
+import System.Directory.Internal.Prelude (getArgs)
 
 newtype Probability a
   = Probability { getProbabilities :: [(a,Double)] }
     deriving Show
+
+
+main :: IO()
+main = do
+  let args = getArgs
+  print (normalize twoRolls)
+  putStrLn (calcProbsFirstPlayer 50)
+
+
 
 roll :: Probability Int
 roll = Probability [ (i,1/6) | i <- [1..6] ]
@@ -28,7 +39,7 @@ twoRolls :: Probability Int
 twoRolls = do
   a <- roll
   b <- roll
-  pure $ a + b
+  pure (a + b)
 
 normalize :: (Ord a) => Probability a -> Probability a
 normalize (Probability xs) =
@@ -43,7 +54,30 @@ rollDice :: Int -> Probability Int
 rollDice n = foldl step (pure 0) [1..n]
   where
   step acc _ =
-    normalize $ do
+    normalize (do
     a <- acc
     r <- roll
-    pure (a + r)
+    pure (a + r))
+
+rollingStones :: Array Int (Probability Int)
+rollingStones = rsArr
+  where
+    rsArr = array (0,50) ((0,pure 0) :
+      [(n, normalize $ do
+        r <- roll
+        if r >= n
+          then pure 1
+          else do
+            k <- rsArr ! (n-r)
+            pure (1+k)
+        )| n <- [1..50]])
+
+
+probFirstPlayer :: Int -> Double
+probFirstPlayer n =
+  let Probability ps = rollingStones ! n
+  in sum [p | (k,p) <- ps, odd k]
+
+calcProbsFirstPlayer:: Int -> String
+calcProbsFirstPlayer k =
+   unlines [show n ++ ":" ++ show (probFirstPlayer n * 100) ++ "%"| n<-[2..k]]
